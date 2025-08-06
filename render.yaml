@@ -7,7 +7,4 @@ services:
     startCommand: python app.py
     envVars:
       - key: VK_GROUP_TOKEN
-        sync: false
-      - key: PORT
-        value: 10000
-    autoDeploy: true 
+        sync: false 
