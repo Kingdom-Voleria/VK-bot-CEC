@@ -35,11 +35,37 @@ def run_bot():
 @app.route('/')
 def health_check():
     """Проверка здоровья сервиса"""
-    return jsonify({
-        "status": "healthy",
-        "bot_running": bot_running,
-        "timestamp": time.time()
-    })
+    status = "🟢 Работает" if bot_running else "🔴 Остановлен"
+    thread_status = "🟢 Активен" if bot_thread and bot_thread.is_alive() else "🔴 Неактивен"
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>VK Bot Status</title>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; }}
+            .status {{ padding: 10px; margin: 10px 0; border-radius: 5px; }}
+            .running {{ background-color: #d4edda; color: #155724; }}
+            .stopped {{ background-color: #f8d7da; color: #721c24; }}
+        </style>
+    </head>
+    <body>
+        <h1>🤖 VK Bot Status</h1>
+        <div class="status {'running' if bot_running else 'stopped'}">
+            <strong>Статус бота:</strong> {status}
+        </div>
+        <div class="status {'running' if bot_thread and bot_thread.is_alive() else 'stopped'}">
+            <strong>Поток бота:</strong> {thread_status}
+        </div>
+        <p><strong>Порт:</strong> {os.environ.get('PORT', '5000')}</p>
+        <p><strong>Время:</strong> {time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+        <p><a href="/status">JSON статус</a> | <a href="/start">Запустить бота</a></p>
+    </body>
+    </html>
+    """
+    return html
 
 @app.route('/start')
 def start_bot():
@@ -58,10 +84,13 @@ def start_bot():
 
 @app.route('/status')
 def bot_status():
-    """Статус бота"""
+    """Статус бота в JSON формате"""
     return jsonify({
+        "status": "healthy",
         "bot_running": bot_running,
-        "thread_alive": bot_thread.is_alive() if bot_thread else False
+        "thread_alive": bot_thread.is_alive() if bot_thread else False,
+        "port": os.environ.get('PORT', '5000'),
+        "timestamp": time.time()
     })
 
 if __name__ == '__main__':
@@ -70,5 +99,6 @@ if __name__ == '__main__':
     bot_thread.start()
     
     # Запускаем Flask сервер
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port) 
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f"Запуск Flask сервера на порту {port}")
+    app.run(host='0.0.0.0', port=port, debug=False) 
