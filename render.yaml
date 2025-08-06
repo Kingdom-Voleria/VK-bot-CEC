@@ -1,0 +1,10 @@
+services:
+  - type: worker
+    name: vk-bot-woleeria
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: VK_GROUP_TOKEN
+        sync: false 
