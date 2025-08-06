@@ -8,4 +8,6 @@ services:
     envVars:
       - key: VK_GROUP_TOKEN
         sync: false
+      - key: PORT
+        value: 10000
     autoDeploy: true 

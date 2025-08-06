@@ -59,7 +59,7 @@ def health_check():
         <div class="status {'running' if bot_thread and bot_thread.is_alive() else 'stopped'}">
             <strong>Поток бота:</strong> {thread_status}
         </div>
-        <p><strong>Порт:</strong> {os.environ.get('PORT', '5000')}</p>
+        <p><strong>Порт:</strong> {os.environ.get('PORT', '10000')}</p>
         <p><strong>Время:</strong> {time.strftime('%Y-%m-%d %H:%M:%S')}</p>
         <p><a href="/status">JSON статус</a> | <a href="/start">Запустить бота</a></p>
     </body>
@@ -89,9 +89,14 @@ def bot_status():
         "status": "healthy",
         "bot_running": bot_running,
         "thread_alive": bot_thread.is_alive() if bot_thread else False,
-        "port": os.environ.get('PORT', '5000'),
+        "port": os.environ.get('PORT', '10000'),
         "timestamp": time.time()
     })
+
+@app.route('/ping')
+def ping():
+    """Простой ping для проверки доступности"""
+    return "pong"
 
 if __name__ == '__main__':
     # Автоматически запускаем бота при старте
@@ -99,6 +104,7 @@ if __name__ == '__main__':
     bot_thread.start()
     
     # Запускаем Flask сервер
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     logger.info(f"Запуск Flask сервера на порту {port}")
+    logger.info(f"Переменная PORT: {os.environ.get('PORT', 'не установлена')}")
     app.run(host='0.0.0.0', port=port, debug=False) 
