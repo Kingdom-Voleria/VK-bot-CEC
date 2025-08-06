@@ -7,4 +7,5 @@ services:
     startCommand: python main.py
     envVars:
       - key: VK_GROUP_TOKEN
-        sync: false 
+        sync: false
+    autoDeploy: true 
