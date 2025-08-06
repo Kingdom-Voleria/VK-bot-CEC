@@ -7,4 +7,6 @@ services:
     startCommand: python app.py
     envVars:
       - key: VK_GROUP_TOKEN
-        sync: false 
+        sync: false
+      - key: PORT
+        value: "5000" 
