@@ -67,10 +67,6 @@ def stop_bot():
     })
 
 if __name__ == '__main__':
-    # Автоматически запускаем бота при старте приложения
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    
     # Запускаем Flask приложение
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port) 
