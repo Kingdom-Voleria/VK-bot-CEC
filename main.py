@@ -3,6 +3,8 @@ import json
 from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
+import threading
+from flask import Flask
 
 load_dotenv()
 TOKEN = os.getenv("VK_GROUP_TOKEN")
@@ -161,4 +163,13 @@ def main():
 
 
 if __name__ == "__main__":
+    def run_flask():
+        app = Flask(__name__)
+        @app.route('/ping')
+        def ping():
+            return 'pong', 200
+        app.run(host='0.0.0.0', port=8080)
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
     main()
