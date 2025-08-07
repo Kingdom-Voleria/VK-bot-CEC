@@ -53,7 +53,7 @@ def get_back_to_main_keyboard():
 
 def main():
     if not TOKEN:
-        print("Токен не найден")
+        logger.error("Токен не найден")
         return
 
     vk_session = vk_api.VkApi(token=TOKEN)
@@ -76,18 +76,23 @@ def main():
 
     logger.info("Бот запущен")
 
+    # Проверяем, что бот не запущен в другом процессе
+    import os
+    pid = os.getpid()
+    logger.info(f"Бот запущен в процессе PID: {pid}")
+
     try:
         with open("citizenship_responses.json", "r", encoding="utf-8") as f:
             citizenship_responses = json.load(f)
     except FileNotFoundError:
-        print("Ошибка: файл citizenship_responses.json не найден")
+        logger.error("Ошибка: файл citizenship_responses.json не найден")
         citizenship_responses = {}
     
     try:
         with open("site_responses.json", "r", encoding="utf-8") as f:
             site_responses = json.load(f)
     except FileNotFoundError:
-        print("Ошибка: файл site_responses.json не найден")
+        logger.error("Ошибка: файл site_responses.json не найден")
         site_responses = {}
 
     def reset_user(user_id):
@@ -108,6 +113,11 @@ def main():
 
     for event in longpoll.listen():
         try:
+            # Проверяем, не нужно ли остановить бота
+            if hasattr(event, '_stop') and event._stop:
+                logger.info("Получен сигнал остановки бота")
+                break
+                
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                 user_id = str(event.user_id)
                 msg = event.text.strip() if event.text else ""

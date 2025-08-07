@@ -7,25 +7,33 @@ from main import main as bot_main
 
 app = Flask(__name__)
 
-# Глобальная переменная для хранения потока бота
+# Глобальные переменные для управления ботом
 bot_thread = None
 bot_running = False
+bot_started = False  # Флаг для отслеживания первого запуска
 
 def run_bot():
     """Запуск бота в отдельном потоке"""
-    global bot_running
-    if bot_running:
-        print("Бот уже запущен")
+    global bot_running, bot_started
+    if bot_running or bot_started:
+        print("Бот уже запущен или запускается")
         return
     
+    bot_started = True
     bot_running = True
     print("Запуск бота...")
     try:
+        # Проверяем, что бот не запущен в другом потоке
+        import threading
+        current_thread = threading.current_thread()
+        print(f"Бот запущен в потоке: {current_thread.name}")
+        
         bot_main()
     except Exception as e:
         print(f"Ошибка в боте: {e}")
     finally:
         bot_running = False
+        bot_started = False
         print("Бот остановлен")
 
 @app.route('/')
@@ -89,7 +97,10 @@ def stop_bot():
     })
 
 if __name__ == '__main__':
-    # Автоматически запускаем бота при старте приложения
+    # Автоматически запускаем бота при старте приложения с небольшой задержкой
+    import time
+    time.sleep(2)  # Задержка 2 секунды перед запуском бота
+    
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
     
