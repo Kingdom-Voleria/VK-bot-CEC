@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import threading
 import os
 import sys
+import datetime
 from main import main as bot_main
 
 app = Flask(__name__)
@@ -33,7 +34,8 @@ def home():
 def health():
     return jsonify({
         "status": "healthy",
-        "bot_running": bot_running
+        "bot_running": bot_running,
+        "timestamp": str(datetime.datetime.now())
     })
 
 @app.route('/start', methods=['POST'])
