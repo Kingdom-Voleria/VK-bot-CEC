@@ -53,13 +53,17 @@ def get_back_to_main_keyboard():
 
 def main():
     if not TOKEN:
-        print("Токен не найден")
+        print("Токен не найден. Проверьте переменную окружения VK_GROUP_TOKEN")
         return
 
-    vk_session = vk_api.VkApi(token=TOKEN)
-    longpoll = VkLongPoll(vk_session)
-    vk = vk_session.get_api()
-    known_users = load_known_users()
+    try:
+        vk_session = vk_api.VkApi(token=TOKEN)
+        longpoll = VkLongPoll(vk_session)
+        vk = vk_session.get_api()
+        known_users = load_known_users()
+    except Exception as e:
+        print(f"Ошибка при инициализации VK API: {e}")
+        return
 
     user_states = {
         "awaiting_application": set(),

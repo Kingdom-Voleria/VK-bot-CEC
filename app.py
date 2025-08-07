@@ -16,11 +16,22 @@ def run_bot():
     global bot_running
     bot_running = True
     try:
+        print("Запуск бота...")
         bot_main()
     except Exception as e:
         print(f"Ошибка в боте: {e}")
+        bot_running = False
     finally:
         bot_running = False
+
+def start_bot_automatically():
+    """Автоматический запуск бота при старте приложения"""
+    global bot_thread, bot_running
+    
+    if not bot_running:
+        print("Автоматический запуск бота...")
+        bot_thread = threading.Thread(target=run_bot, daemon=True)
+        bot_thread.start()
 
 @app.route('/')
 def home():
@@ -35,7 +46,17 @@ def health():
     return jsonify({
         "status": "healthy",
         "bot_running": bot_running,
-        "timestamp": str(datetime.datetime.now())
+        "timestamp": str(datetime.datetime.now()),
+        "vk_token_set": bool(os.environ.get('VK_GROUP_TOKEN'))
+    })
+
+@app.route('/status')
+def status():
+    return jsonify({
+        "bot_running": bot_running,
+        "vk_token_set": bool(os.environ.get('VK_GROUP_TOKEN')),
+        "timestamp": str(datetime.datetime.now()),
+        "environment": "production" if os.environ.get('RENDER') else "development"
     })
 
 @app.route('/start', methods=['POST'])
@@ -67,6 +88,9 @@ def stop_bot():
     })
 
 if __name__ == '__main__':
+    # Запускаем бота автоматически при старте
+    start_bot_automatically()
+    
     # Запускаем Flask приложение
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port) 
