@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 from threading import Thread
-from flask import Flask
+from app import app
 
 load_dotenv()
 TOKEN = os.getenv("VK_GROUP_TOKEN")
@@ -163,11 +163,5 @@ def main():
 
 
 if __name__ == "__main__":
-    app = Flask(__name__)
-
-    @app.route("/")
-    def home():
-        return "I'm alive!"
-
     Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()
     main()
