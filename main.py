@@ -50,6 +50,18 @@ def get_keyboard():
 def get_back_to_main_keyboard():
     return generate_keyboard(["В главное меню"])
 
+def safe_send_message(vk, user_id, message, keyboard=None, random_id=0):
+    """Безопасная отправка сообщения с обработкой ошибок"""
+    try:
+        if keyboard:
+            vk.messages.send(user_id=user_id, message=message, keyboard=keyboard, random_id=random_id)
+        else:
+            vk.messages.send(user_id=user_id, message=message, random_id=random_id)
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+        return False
+
 
 def main():
     if not TOKEN:
@@ -63,6 +75,14 @@ def main():
         known_users = load_known_users()
     except Exception as e:
         print(f"Ошибка при инициализации VK API: {e}")
+        return
+
+    # Проверяем подключение к VK API
+    try:
+        vk.groups.getById()
+        print("Подключение к VK API успешно установлено")
+    except Exception as e:
+        print(f"Ошибка при проверке подключения к VK API: {e}")
         return
 
     user_states = {
@@ -99,44 +119,51 @@ def main():
             state.discard(user_id)
 
     def handle_response(event, message_dict, category_map):
-        message = message_dict[event.text]
-        if event.text in category_map:
-            user_states[category_map[event.text]].add(str(event.user_id))
-        if message:
-            vk.messages.send(
-                user_id=event.user_id,
-                message=message,
-                keyboard=get_back_to_main_keyboard(),
-                random_id=0
-            )
+        try:
+            message = message_dict.get(event.text, "")
+            if event.text in category_map:
+                user_states[category_map[event.text]].add(str(event.user_id))
+            if message:
+                safe_send_message(vk, event.user_id, message, keyboard=get_back_to_main_keyboard())
+        except Exception as e:
+            logger.error(f"Ошибка в handle_response: {e}")
+            # Отправляем сообщение об ошибке пользователю
+            safe_send_message(vk, event.user_id, "Произошла ошибка при обработке запроса. Попробуйте позже.", keyboard=get_keyboard())
 
     for event in longpoll.listen():
         try:
-            if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                user_id = str(event.user_id)
-                msg = event.text.strip() if event.text else ""
+            # Обрабатываем только новые сообщения, адресованные боту
+            if event.type != VkEventType.MESSAGE_NEW or not event.to_me:
+                continue
+                
+            user_id = str(event.user_id)
+            msg = event.text.strip() if event.text else ""
 
-                logger.info(f"Сообщение от {user_id}: {msg}")
+            # Пропускаем пустые сообщения
+            if not msg:
+                continue
+
+            logger.info(f"Сообщение от {user_id}: {msg}")
 
             if user_id not in known_users:
-                vk.messages.send(user_id=event.user_id, message="👋 Здравствуйте, гражданин Королевства Волерия! \nРады приветствовать вас в официальном сообществе нашего великого государства. \nЗдесь вы можете получить помощь по вопросам гражданства и сайту, а также оставить свои обращения и предложения. \n⬇️ Выберите нужный раздел в меню ниже, и я с радостью помогу вам!", keyboard=get_keyboard(), random_id=0)
+                safe_send_message(vk, event.user_id, "👋 Здравствуйте, гражданин Королевства Волерия! \nРады приветствовать вас в официальном сообществе нашего великого государства. \nЗдесь вы можете получить помощь по вопросам гражданства и сайту, а также оставить свои обращения и предложения. \n⬇️ Выберите нужный раздел в меню ниже, и я с радостью помогу вам!", keyboard=get_keyboard())
                 save_known_user(user_id)
                 known_users.add(user_id)
                 continue
 
             if msg == "Вопрос с гражданством":
                 keyboard = generate_keyboard(list(citizenship_responses.keys()))
-                vk.messages.send(user_id=event.user_id, message="🛂 Пожалуйста, выберите один из доступных вопросов, чтобы я мог помочь вам с информацией и поддержкой по вопросам гражданства Королевства Волерия.", keyboard=keyboard, random_id=0)
+                safe_send_message(vk, event.user_id, "🛂 Пожалуйста, выберите один из доступных вопросов, чтобы я мог помочь вам с информацией и поддержкой по вопросам гражданства Королевства Волерия.", keyboard=keyboard)
                 continue
 
             if msg == "Вопрос с сайтом":
                 keyboard = generate_keyboard(list(site_responses.keys()))
-                vk.messages.send(user_id=event.user_id, message="🌐 Пожалуйста, выберите интересующий вас вопрос, связанный с работой сайта, чтобы получить помощь или оставить обращение.", keyboard=keyboard, random_id=0)
+                safe_send_message(vk, event.user_id, "🌐 Пожалуйста, выберите интересующий вас вопрос, связанный с работой сайта, чтобы получить помощь или оставить обращение.", keyboard=keyboard)
                 continue
 
             if msg in ("Назад", "В главное меню"):
                 reset_user(user_id)
-                vk.messages.send(user_id=event.user_id, message="🔙 Вы вернулись в главное меню. Выберите действие из списка ниже, чтобы продолжить.", keyboard=get_keyboard(), random_id=0)
+                safe_send_message(vk, event.user_id, "🔙 Вы вернулись в главное меню. Выберите действие из списка ниже, чтобы продолжить.", keyboard=get_keyboard())
                 continue
 
             citizenship_map = {
@@ -161,6 +188,9 @@ def main():
             if msg in site_responses:
                 handle_response(event, site_responses, site_map)
                 continue
+                
+            # Проверяем, находится ли пользователь в состоянии ожидания
+            user_in_state = False
             for state, label in [
                 ("awaiting_application", "Заявка на госслужбу"),
                 ("awaiting_citizenship_refusal", "Отказ от гражданства"),
@@ -174,18 +204,18 @@ def main():
                 ("awaiting_site_other", "Другая проблема (сайт)")
             ]:
                 if user_id in user_states[state]:
-                    vk.messages.send(user_id=ADMIN_ID, message=f"📩 {label}:\n\n{msg}", random_id=0)
-                    vk.messages.send(user_id=event.user_id, message="✅ Обращение отправлено! Администрация рассмотрит его в ближайшее время.", keyboard=get_back_to_main_keyboard(), random_id=0)
+                    safe_send_message(vk, ADMIN_ID, f"📩 {label}:\n\n{msg}")
+                    safe_send_message(vk, event.user_id, "✅ Обращение отправлено! Администрация рассмотрит его в ближайшее время.", keyboard=get_back_to_main_keyboard())
                     user_states[state].remove(user_id)
+                    user_in_state = True
                     break
-            else:
-                vk.messages.send(user_id=event.user_id, message="Команда не распознана. Выберите действие:", keyboard=get_keyboard(), random_id=0)
+                    
+            if not user_in_state:
+                safe_send_message(vk, event.user_id, "Команда не распознана. Выберите действие:", keyboard=get_keyboard())
+                
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}")
-            try:
-                vk.messages.send(user_id=event.user_id, message="Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard(), random_id=0)
-            except Exception as send_error:
-                logger.error(f"Ошибка при отправке сообщения об ошибке: {send_error}")
+            safe_send_message(vk, event.user_id, "Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard())
 
 
 if __name__ == "__main__":
