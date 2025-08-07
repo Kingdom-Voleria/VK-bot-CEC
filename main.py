@@ -1,20 +1,8 @@
 import os
 import json
-import logging
-import sys
 from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
 
 load_dotenv()
 TOKEN = os.getenv("VK_GROUP_TOKEN")
@@ -57,44 +45,33 @@ def get_back_to_main_keyboard():
 
 def main():
     if not TOKEN:
-        logger.error("Токен не найден")
+        print("Токен не найден")
         return
 
-    try:
-        vk_session = vk_api.VkApi(token=TOKEN)
-        longpoll = VkLongPoll(vk_session)
-        vk = vk_session.get_api()
-        known_users = load_known_users()
+    vk_session = vk_api.VkApi(token=TOKEN)
+    longpoll = VkLongPoll(vk_session)
+    vk = vk_session.get_api()
+    known_users = load_known_users()
 
-        user_states = {
-            "awaiting_application": set(),
-            "awaiting_citizenship_refusal": set(),
-            "awaiting_citizenship_feedback": set(),
-            "awaiting_site_feedback": set(),
-            "awaiting_citizenship_other": set(),
-            "awaiting_site_other": set(),
-            "awaiting_site_request": set(),
-            "awaiting_party_registration": set(),
-            "awaiting_vote_request": set(),
-            "awaiting_error_report": set(),
-        }
+    user_states = {
+        "awaiting_application": set(),
+        "awaiting_citizenship_refusal": set(),
+        "awaiting_citizenship_feedback": set(),
+        "awaiting_site_feedback": set(),
+        "awaiting_citizenship_other": set(),
+        "awaiting_site_other": set(),
+        "awaiting_site_request": set(),
+        "awaiting_party_registration": set(),
+        "awaiting_vote_request": set(),
+        "awaiting_error_report": set(),
+    }
 
-        logger.info("Бот запущен")
-    except Exception as e:
-        logger.error(f"Ошибка при инициализации: {e}")
-        return
+    print("Бот запущен")
 
-    try:
-        with open("citizenship_responses.json", "r", encoding="utf-8") as f:
-            citizenship_responses = json.load(f)
-        with open("site_responses.json", "r", encoding="utf-8") as f:
-            site_responses = json.load(f)
-    except FileNotFoundError as e:
-        logger.error(f"Файл не найден: {e}")
-        return
-    except json.JSONDecodeError as e:
-        logger.error(f"Ошибка парсинга JSON: {e}")
-        return
+    with open("citizenship_responses.json", "r", encoding="utf-8") as f:
+        citizenship_responses = json.load(f)
+    with open("site_responses.json", "r", encoding="utf-8") as f:
+        site_responses = json.load(f)
 
     def reset_user(user_id):
         for state in user_states.values():
@@ -117,7 +94,7 @@ def main():
             user_id = str(event.user_id)
             msg = event.text.strip()
 
-            logger.info(f"Сообщение от {user_id}: {msg}")
+            print(f"Сообщение от {user_id}: {msg}")
 
             if user_id not in known_users:
                 vk.messages.send(user_id=event.user_id, message="👋 Здравствуйте, гражданин Королевства Волерия! \nРады приветствовать вас в официальном сообществе нашего великого государства. \nЗдесь вы можете получить помощь по вопросам гражданства и сайту, а также оставить свои обращения и предложения. \n⬇️ Выберите нужный раздел в меню ниже, и я с радостью помогу вам!", keyboard=get_keyboard(), random_id=0)
