@@ -96,6 +96,20 @@ def stop_bot():
         "message": "Бот остановлен"
     })
 
+@app.route('/stop', methods=['GET'])
+def stop_bot_get():
+    """GET эндпоинт для остановки бота через браузер"""
+    global bot_running
+    
+    if not bot_running:
+        return jsonify({"status": "info", "message": "Бот не запущен"})
+    
+    bot_running = False
+    return jsonify({
+        "status": "success", 
+        "message": "Бот остановлен"
+    })
+
 if __name__ == '__main__':
     # Автоматически запускаем бота при старте приложения с небольшой задержкой
     import time

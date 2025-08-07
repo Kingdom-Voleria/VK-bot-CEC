@@ -119,6 +119,11 @@ def main():
                 break
                 
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                # Проверяем, что у события есть user_id
+                if not hasattr(event, 'user_id') or not event.user_id:
+                    logger.warning("Событие без user_id, пропускаем")
+                    continue
+                    
                 user_id = str(event.user_id)
                 msg = event.text.strip() if event.text else ""
 
@@ -189,7 +194,9 @@ def main():
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}")
             try:
-                vk.messages.send(user_id=event.user_id, message="Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard(), random_id=0)
+                # Проверяем, что user_id доступен
+                if hasattr(event, 'user_id') and event.user_id:
+                    vk.messages.send(user_id=event.user_id, message="Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard(), random_id=0)
             except Exception as send_error:
                 logger.error(f"Ошибка при отправке сообщения об ошибке: {send_error}")
 
