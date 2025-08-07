@@ -53,7 +53,7 @@ def get_back_to_main_keyboard():
 
 def main():
     if not TOKEN:
-        logger.error("Токен не найден")
+        print("Токен не найден")
         return
 
     vk_session = vk_api.VkApi(token=TOKEN)
@@ -76,23 +76,18 @@ def main():
 
     logger.info("Бот запущен")
 
-    # Проверяем, что бот не запущен в другом процессе
-    import os
-    pid = os.getpid()
-    logger.info(f"Бот запущен в процессе PID: {pid}")
-
     try:
         with open("citizenship_responses.json", "r", encoding="utf-8") as f:
             citizenship_responses = json.load(f)
     except FileNotFoundError:
-        logger.error("Ошибка: файл citizenship_responses.json не найден")
+        print("Ошибка: файл citizenship_responses.json не найден")
         citizenship_responses = {}
     
     try:
         with open("site_responses.json", "r", encoding="utf-8") as f:
             site_responses = json.load(f)
     except FileNotFoundError:
-        logger.error("Ошибка: файл site_responses.json не найден")
+        print("Ошибка: файл site_responses.json не найден")
         site_responses = {}
 
     def reset_user(user_id):
@@ -113,17 +108,7 @@ def main():
 
     for event in longpoll.listen():
         try:
-            # Проверяем, не нужно ли остановить бота
-            if hasattr(event, '_stop') and event._stop:
-                logger.info("Получен сигнал остановки бота")
-                break
-                
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                # Проверяем, что у события есть user_id
-                if not hasattr(event, 'user_id') or not event.user_id:
-                    logger.warning("Событие без user_id, пропускаем")
-                    continue
-                    
                 user_id = str(event.user_id)
                 msg = event.text.strip() if event.text else ""
 
@@ -194,9 +179,7 @@ def main():
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}")
             try:
-                # Проверяем, что user_id доступен
-                if hasattr(event, 'user_id') and event.user_id:
-                    vk.messages.send(user_id=event.user_id, message="Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard(), random_id=0)
+                vk.messages.send(user_id=event.user_id, message="Произошла ошибка. Попробуйте позже.", keyboard=get_keyboard(), random_id=0)
             except Exception as send_error:
                 logger.error(f"Ошибка при отправке сообщения об ошибке: {send_error}")
 

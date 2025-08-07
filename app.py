@@ -7,34 +7,20 @@ from main import main as bot_main
 
 app = Flask(__name__)
 
-# Глобальные переменные для управления ботом
+# Глобальная переменная для хранения потока бота
 bot_thread = None
 bot_running = False
-bot_started = False  # Флаг для отслеживания первого запуска
 
 def run_bot():
     """Запуск бота в отдельном потоке"""
-    global bot_running, bot_started
-    if bot_running or bot_started:
-        print("Бот уже запущен или запускается")
-        return
-    
-    bot_started = True
+    global bot_running
     bot_running = True
-    print("Запуск бота...")
     try:
-        # Проверяем, что бот не запущен в другом потоке
-        import threading
-        current_thread = threading.current_thread()
-        print(f"Бот запущен в потоке: {current_thread.name}")
-        
         bot_main()
     except Exception as e:
         print(f"Ошибка в боте: {e}")
     finally:
         bot_running = False
-        bot_started = False
-        print("Бот остановлен")
 
 @app.route('/')
 def home():
@@ -67,22 +53,6 @@ def start_bot():
         "message": "Бот запущен"
     })
 
-@app.route('/start', methods=['GET'])
-def start_bot_get():
-    """GET эндпоинт для запуска бота через браузер"""
-    global bot_thread, bot_running
-    
-    if bot_running:
-        return jsonify({"status": "info", "message": "Бот уже запущен"})
-    
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    
-    return jsonify({
-        "status": "success", 
-        "message": "Бот запущен"
-    })
-
 @app.route('/stop', methods=['POST'])
 def stop_bot():
     global bot_running
@@ -96,28 +66,7 @@ def stop_bot():
         "message": "Бот остановлен"
     })
 
-@app.route('/stop', methods=['GET'])
-def stop_bot_get():
-    """GET эндпоинт для остановки бота через браузер"""
-    global bot_running
-    
-    if not bot_running:
-        return jsonify({"status": "info", "message": "Бот не запущен"})
-    
-    bot_running = False
-    return jsonify({
-        "status": "success", 
-        "message": "Бот остановлен"
-    })
-
 if __name__ == '__main__':
-    # Автоматически запускаем бота при старте приложения с небольшой задержкой
-    import time
-    time.sleep(2)  # Задержка 2 секунды перед запуском бота
-    
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    
     # Запускаем Flask приложение
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port) 
