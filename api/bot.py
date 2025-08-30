@@ -1,33 +1,49 @@
-import os
+from http.server import BaseHTTPRequestHandler
 import json
+import os
 from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
+import threading
+import time
 
 load_dotenv()
+
 TOKEN = os.getenv("VK_GROUP_TOKEN")
 KNOWN_USERS_FILE = "known_users.txt"
 ADMIN_ID = 443835275
 
+# Глобальные переменные для хранения состояния
+known_users = set()
+user_states = {
+    "awaiting_application": set(),
+    "awaiting_citizenship_refusal": set(),
+    "awaiting_citizenship_feedback": set(),
+    "awaiting_site_feedback": set(),
+    "awaiting_citizenship_other": set(),
+    "awaiting_site_other": set(),
+    "awaiting_site_request": set(),
+    "awaiting_party_registration": set(),
+    "awaiting_vote_request": set(),
+    "awaiting_error_report": set(),
+}
 
 def load_known_users():
+    global known_users
     if not os.path.exists(KNOWN_USERS_FILE):
         return set()
     with open(KNOWN_USERS_FILE, "r") as file:
-        return set(line.strip() for line in file)
-
+        known_users = set(line.strip() for line in file)
 
 def save_known_user(user_id):
     with open(KNOWN_USERS_FILE, "a") as file:
         file.write(f"{user_id}\n")
-
 
 def generate_keyboard(labels, one_time=False):
     return json.dumps({
         "one_time": one_time,
         "buttons": [[{"action": {"type": "text", "label": label}, "color": "secondary"}] for label in labels]
     }, ensure_ascii=False)
-
 
 def get_keyboard():
     return json.dumps({
@@ -38,12 +54,26 @@ def get_keyboard():
         ]]
     }, ensure_ascii=False)
 
-
 def get_back_to_main_keyboard():
     return generate_keyboard(["В главное меню"])
 
+def reset_user(user_id):
+    for state in user_states.values():
+        state.discard(user_id)
 
-def main():
+def handle_response(event, message_dict, category_map, vk):
+    message = message_dict[event.text]
+    if event.text in category_map:
+        user_states[category_map[event.text]].add(str(event.user_id))
+    if message:
+        vk.messages.send(
+            user_id=event.user_id,
+            message=message,
+            keyboard=get_back_to_main_keyboard(),
+            random_id=0
+        )
+
+def run_bot():
     if not TOKEN:
         print("Токен не найден")
         return
@@ -51,20 +81,8 @@ def main():
     vk_session = vk_api.VkApi(token=TOKEN)
     longpoll = VkLongPoll(vk_session)
     vk = vk_session.get_api()
-    known_users = load_known_users()
-
-    user_states = {
-        "awaiting_application": set(),
-        "awaiting_citizenship_refusal": set(),
-        "awaiting_citizenship_feedback": set(),
-        "awaiting_site_feedback": set(),
-        "awaiting_citizenship_other": set(),
-        "awaiting_site_other": set(),
-        "awaiting_site_request": set(),
-        "awaiting_party_registration": set(),
-        "awaiting_vote_request": set(),
-        "awaiting_error_report": set(),
-    }
+    
+    load_known_users()
 
     print("Бот запущен")
 
@@ -72,22 +90,6 @@ def main():
         citizenship_responses = json.load(f)
     with open("site_responses.json", "r", encoding="utf-8") as f:
         site_responses = json.load(f)
-
-    def reset_user(user_id):
-        for state in user_states.values():
-            state.discard(user_id)
-
-    def handle_response(event, message_dict, category_map):
-        message = message_dict[event.text]
-        if event.text in category_map:
-            user_states[category_map[event.text]].add(str(event.user_id))
-        if message:
-            vk.messages.send(
-                user_id=event.user_id,
-                message=message,
-                keyboard=get_back_to_main_keyboard(),
-                random_id=0
-            )
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
@@ -124,7 +126,7 @@ def main():
                 "Другая проблема": "awaiting_citizenship_other"
             }
             if msg in citizenship_responses:
-                handle_response(event, citizenship_responses, citizenship_map)
+                handle_response(event, citizenship_responses, citizenship_map, vk)
                 continue
 
             site_map = {
@@ -137,8 +139,9 @@ def main():
             }
 
             if msg in site_responses:
-                handle_response(event, site_responses, site_map)
+                handle_response(event, site_responses, site_map, vk)
                 continue
+                
             for state, label in [
                 ("awaiting_application", "Заявка на госслужбу"),
                 ("awaiting_citizenship_refusal", "Отказ от гражданства"),
@@ -159,6 +162,39 @@ def main():
             else:
                 vk.messages.send(user_id=event.user_id, message="Команда не распознана. Выберите действие:", keyboard=get_keyboard(), random_id=0)
 
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        
+        response = {
+            "status": "success",
+            "message": "VK Bot API is running",
+            "bot_status": "active"
+        }
+        
+        self.wfile.write(json.dumps(response).encode())
+        return
 
+    def do_POST(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        
+        response = {
+            "status": "success",
+            "message": "POST request received"
+        }
+        
+        self.wfile.write(json.dumps(response).encode())
+        return
+
+# Запускаем бота в отдельном потоке
 if __name__ == "__main__":
-    main()
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Держим основной поток живым
+    while True:
+        time.sleep(1)
