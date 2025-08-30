@@ -9,8 +9,8 @@ import json
 def test_bot_api():
     """Тестирует API бота"""
     
-    # URL вашего бота на Vercel (замените на ваш)
-    bot_url = "https://your-project-name.vercel.app/api/bot"
+    # URL вашего бота на Vercel
+    bot_url = "https://vk-bot-cec.vercel.app/api/bot"
     
     print("🧪 Тестирование VK бота...")
     

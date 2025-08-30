@@ -23,7 +23,7 @@
 1. **В настройках группы выберите "Callback API"**
 2. **Укажите URL вашего бота на Vercel:**
    ```
-   https://your-project-name.vercel.app/api/bot
+   https://vk-bot-cec.vercel.app/api/bot
    ```
 3. **Включите события:**
    - ✅ Сообщения сообщества
