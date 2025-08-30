@@ -201,6 +201,9 @@ class handler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             request_body = self.rfile.read(content_length)
             
+            # Логируем входящий запрос для отладки
+            print(f"Получен запрос: {request_body.decode('utf-8')}")
+            
             # Проверяем подпись VK (если настроена)
             vk_signature = self.headers.get('X-Vk-Signature', '')
             if not verify_vk_signature(request_body, vk_signature):
@@ -214,7 +217,8 @@ class handler(BaseHTTPRequestHandler):
             # Проверяем тип события
             if data.get('type') == 'confirmation':
                 # Подтверждение вебхука
-                confirmation_code = os.getenv("VK_CONFIRMATION_CODE", "default_code")
+                confirmation_code = os.getenv("VK_CONFIRMATION_CODE", "b1564bca")
+                print(f"Отправляем код подтверждения: {confirmation_code}")
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
